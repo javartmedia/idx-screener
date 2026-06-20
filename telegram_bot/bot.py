@@ -10,6 +10,7 @@ from telegram.ext import (
     Application,
     CommandHandler,
     MessageHandler,
+    CallbackQueryHandler,
     filters,
     ContextTypes,
 )
@@ -28,6 +29,9 @@ from handlers import (
     risk_command,
     alert_command,
     interval_command,
+    button_callback,
+    handle_message,
+    error_handler,
 )
 
 logging.basicConfig(
@@ -35,39 +39,6 @@ logging.basicConfig(
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
-
-
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.lower()
-
-    if text.startswith("/screen "):
-        args = text.replace("/screen ", "").split()
-        context.args = args
-        await screen_command(update, context)
-    elif text.startswith("/analyze "):
-        args = text.replace("/analyze ", "").split()
-        context.args = args
-        await analyze_command(update, context)
-    elif text.startswith("/add "):
-        args = text.replace("/add ", "").split()
-        context.args = args
-        await add_command(update, context)
-    elif text.startswith("/remove "):
-        args = text.replace("/remove ", "").split()
-        context.args = args
-        await remove_command(update, context)
-    elif text.startswith("/s "):
-        args = text.replace("/s ", "").split()
-        context.args = args
-        await screen_command(update, context)
-    elif text.startswith("/a "):
-        args = text.replace("/a ", "").split()
-        context.args = args
-        await analyze_command(update, context)
-
-
-async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    logger.error(f"Exception while handling an update: {context.error}")
 
 
 def main():
@@ -94,6 +65,8 @@ def main():
     application.add_handler(CommandHandler("risk", risk_command))
     application.add_handler(CommandHandler("alert", alert_command))
     application.add_handler(CommandHandler("interval", interval_command))
+
+    application.add_handler(CallbackQueryHandler(button_callback))
 
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)

@@ -1,5 +1,4 @@
 import sys
-import os
 from pathlib import Path
 from datetime import datetime
 from typing import List
@@ -27,6 +26,10 @@ from formatter import (
     format_success,
     format_info,
     format_daily_summary,
+    get_main_menu,
+    get_screen_result_menu,
+    get_back_menu,
+    get_alert_menu,
 )
 
 config = load_config()
@@ -39,26 +42,29 @@ user_settings = {}
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = format_welcome()
-    await update.message.reply_text(text, parse_mode="HTML")
+    keyboard = get_main_menu()
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = format_help()
-    await update.message.reply_text(text, parse_mode="HTML")
+    keyboard = get_back_menu()
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
 
 
 async def screen_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        text = format_error("Saham tidak dispesifikasikan. Contoh: /screen BBCA")
-        await update.message.reply_text(text, parse_mode="HTML")
+        text = "Ketik kode saham (contoh: BBCA TLKM BBRI):"
+        await update.message.reply_text(text)
+        context.user_data["state"] = "waiting_screen"
         return
 
     symbols = [arg.upper() for arg in context.args]
+    await process_screen(update, context, symbols)
 
-    await update.message.reply_text(
-        format_info(f"Screening {len(symbols)} saham..."),
-        parse_mode="HTML",
-    )
+
+async def process_screen(update: Update, context: ContextTypes.DEFAULT_TYPE, symbols: List[str]):
+    await update.message.reply_text(format_info(f"Screening {len(symbols)} saham..."), parse_mode="HTML")
 
     signals = []
     for symbol in symbols:
@@ -77,36 +83,27 @@ async def screen_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "indicators": signal.indicators,
                     })
         except Exception as e:
-            await update.message.reply_text(
-                format_error(f"Error screening {symbol}: {str(e)}"),
-                parse_mode="HTML",
-            )
+            await update.message.reply_text(format_error(f"Error screening {symbol}: {str(e)}"), parse_mode="HTML")
 
     if signals:
         for signal in signals:
             text = format_signal(signal)
-            await update.message.reply_text(text, parse_mode="HTML")
+            keyboard = get_screen_result_menu()
+            await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
     else:
-        await update.message.reply_text(
-            format_info("Tidak ada sinyal ditemukan"),
-            parse_mode="HTML",
-        )
+        keyboard = get_screen_result_menu()
+        await update.message.reply_text(format_info("Tidak ada sinyal ditemukan"), parse_mode="HTML", reply_markup=keyboard)
 
 
 async def screenall_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     watchlist = load_watchlist()
 
     if not watchlist:
-        await update.message.reply_text(
-            format_error("Watchlist kosong. Gunakan /add untuk menambah saham."),
-            parse_mode="HTML",
-        )
+        keyboard = get_main_menu()
+        await update.message.reply_text(format_error("Watchlist kosong."), parse_mode="HTML", reply_markup=keyboard)
         return
 
-    await update.message.reply_text(
-        format_info(f"Screening {len(watchlist)} saham..."),
-        parse_mode="HTML",
-    )
+    await update.message.reply_text(format_info(f"Screening {len(watchlist)} saham..."), parse_mode="HTML")
 
     signals = []
     for symbol in watchlist:
@@ -130,37 +127,33 @@ async def screenall_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if signals:
         signals.sort(key=lambda x: x.get("score", 0), reverse=True)
         text = format_signals(signals)
-        await update.message.reply_text(text, parse_mode="HTML")
+        keyboard = get_screen_result_menu()
+        await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
     else:
-        await update.message.reply_text(
-            format_info("Tidak ada sinyal ditemukan"),
-            parse_mode="HTML",
-        )
+        keyboard = get_screen_result_menu()
+        await update.message.reply_text(format_info("Tidak ada sinyal ditemukan"), parse_mode="HTML", reply_markup=keyboard)
 
 
 async def analyze_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text(
-            format_error("Saham tidak dispesifikasikan. Contoh: /analyze BBCA"),
-            parse_mode="HTML",
-        )
+        text = "Ketik kode saham untuk dianalisis:"
+        await update.message.reply_text(text)
+        context.user_data["state"] = "waiting_analyze"
         return
 
     symbol = context.args[0].upper()
+    await process_analyze(update, context, symbol)
 
-    await update.message.reply_text(
-        format_info(f"Menganalisis {symbol}..."),
-        parse_mode="HTML",
-    )
+
+async def process_analyze(update: Update, context: ContextTypes.DEFAULT_TYPE, symbol: str):
+    await update.message.reply_text(format_info(f"Menganalisis {symbol}..."), parse_mode="HTML")
 
     try:
         df = collector.get_stock_data(symbol, days=60, timeframe="15m")
 
         if df.empty:
-            await update.message.reply_text(
-                format_error(f"Tidak data ditemukan untuk {symbol}"),
-                parse_mode="HTML",
-            )
+            keyboard = get_main_menu()
+            await update.message.reply_text(format_error(f"Tidak data ditemukan untuk {symbol}"), parse_mode="HTML", reply_markup=keyboard)
             return
 
         from src.data_models import StockData
@@ -168,85 +161,82 @@ async def analyze_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         analysis = screener.analyze_stock(stock_data)
 
         text = format_analysis(analysis)
-        await update.message.reply_text(text, parse_mode="HTML")
+        keyboard = get_back_menu()
+        await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
 
     except Exception as e:
-        await update.message.reply_text(
-            format_error(f"Error: {str(e)}"),
-            parse_mode="HTML",
-        )
+        await update.message.reply_text(format_error(f"Error: {str(e)}"), parse_mode="HTML")
 
 
 async def watchlist_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     watchlist = load_watchlist()
     text = format_watchlist(watchlist)
-    await update.message.reply_text(text, parse_mode="HTML")
+    keyboard = get_main_menu()
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
 
 
 async def add_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text(
-            format_error("Saham tidak dispesifikasikan. Contoh: /add BBNI"),
-            parse_mode="HTML",
-        )
+        text = "Ketik kode saham yang ingin ditambahkan:"
+        await update.message.reply_text(text)
+        context.user_data["state"] = "waiting_add"
         return
 
     symbol = context.args[0].upper()
     watchlist = load_watchlist()
 
     if symbol in watchlist:
-        await update.message.reply_text(
-            format_info(f"{symbol} sudah ada di watchlist"),
-            parse_mode="HTML",
-        )
+        keyboard = get_main_menu()
+        await update.message.reply_text(format_info(f"{symbol} sudah ada di watchlist"), parse_mode="HTML", reply_markup=keyboard)
         return
 
     watchlist.append(symbol)
     save_watchlist(watchlist)
 
-    await update.message.reply_text(
-        format_success(f"{symbol} ditambahkan ke watchlist"),
-        parse_mode="HTML",
-    )
+    keyboard = get_main_menu()
+    await update.message.reply_text(format_success(f"{symbol} ditambahkan ke watchlist"), parse_mode="HTML", reply_markup=keyboard)
 
 
 async def remove_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text(
-            format_error("Saham tidak dispesifikasikan. Contoh: /remove BBNI"),
-            parse_mode="HTML",
-        )
+        text = "Ketik kode saham yang ingin dihapus:"
+        await update.message.reply_text(text)
+        context.user_data["state"] = "waiting_remove"
         return
 
     symbol = context.args[0].upper()
     watchlist = load_watchlist()
 
     if symbol not in watchlist:
-        await update.message.reply_text(
-            format_info(f"{symbol} tidak ada di watchlist"),
-            parse_mode="HTML",
-        )
+        keyboard = get_main_menu()
+        await update.message.reply_text(format_info(f"{symbol} tidak ada di watchlist"), parse_mode="HTML", reply_markup=keyboard)
         return
 
     watchlist.remove(symbol)
     save_watchlist(watchlist)
 
-    await update.message.reply_text(
-        format_success(f"{symbol} dihapus dari watchlist"),
-        parse_mode="HTML",
-    )
+    keyboard = get_main_menu()
+    await update.message.reply_text(format_success(f"{symbol} dihapus dari watchlist"), parse_mode="HTML", reply_markup=keyboard)
 
 
 async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status = collector.get_market_status()
     text = format_market_status(status)
-    await update.message.reply_text(text, parse_mode="HTML")
+    keyboard = get_main_menu()
+    if update.callback_query:
+        await update.callback_query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+    else:
+        await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
 
 
 async def risk_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     risk = position_sizer.get_risk_summary()
     text = format_risk_info(risk)
-    await update.message.reply_text(text, parse_mode="HTML")
+    keyboard = get_main_menu()
+    if update.callback_query:
+        await update.callback_query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+    else:
+        await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
 
 
 async def alert_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -255,33 +245,37 @@ async def alert_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id not in user_settings:
         user_settings[user_id] = {"alert_enabled": True, "interval": 15}
 
-    if not context.args:
-        current = "ON" if user_settings[user_id]["alert_enabled"] else "OFF"
-        await update.message.reply_text(
-            format_info(f"Auto alert saat ini: {current}"),
-            parse_mode="HTML",
-        )
-        return
+    is_on = user_settings[user_id]["alert_enabled"]
+    status = "ON" if is_on else "OFF"
+    text = f"<b>Auto Alert:</b> {status}"
+    keyboard = get_alert_menu(is_on)
 
-    setting = context.args[0].lower()
-
-    if setting == "on":
-        user_settings[user_id]["alert_enabled"] = True
-        await update.message.reply_text(
-            format_success("Auto alert diaktifkan"),
-            parse_mode="HTML",
-        )
-    elif setting == "off":
-        user_settings[user_id]["alert_enabled"] = False
-        await update.message.reply_text(
-            format_success("Auto alert dimatikan"),
-            parse_mode="HTML",
-        )
+    if update.callback_query:
+        await update.callback_query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
     else:
-        await update.message.reply_text(
-            format_error("Pilihan: /alert on atau /alert off"),
-            parse_mode="HTML",
-        )
+        await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+
+async def alert_on_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    if user_id not in user_settings:
+        user_settings[user_id] = {"alert_enabled": True, "interval": 15}
+    user_settings[user_id]["alert_enabled"] = True
+
+    text = "<b>Auto Alert:</b> ON"
+    keyboard = get_alert_menu(True)
+    await update.callback_query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+
+async def alert_off_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    if user_id not in user_settings:
+        user_settings[user_id] = {"alert_enabled": True, "interval": 15}
+    user_settings[user_id]["alert_enabled"] = False
+
+    text = "<b>Auto Alert:</b> OFF"
+    keyboard = get_alert_menu(False)
+    await update.callback_query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
 
 
 async def interval_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -292,10 +286,7 @@ async def interval_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not context.args:
         current = user_settings[user_id]["interval"]
-        await update.message.reply_text(
-            format_info(f"Interval saat ini: {current} menit"),
-            parse_mode="HTML",
-        )
+        await update.message.reply_text(format_info(f"Interval saat ini: {current} menit"), parse_mode="HTML")
         return
 
     try:
@@ -303,14 +294,168 @@ async def interval_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if interval < 1 or interval > 60:
             raise ValueError
     except ValueError:
-        await update.message.reply_text(
-            format_error("Interval harus 1-60 menit"),
-            parse_mode="HTML",
-        )
+        await update.message.reply_text(format_error("Interval harus 1-60 menit"), parse_mode="HTML")
         return
 
     user_settings[user_id]["interval"] = interval
-    await update.message.reply_text(
-        format_success(f"Interval diatur ke {interval} menit"),
-        parse_mode="HTML",
-    )
+    await update.message.reply_text(format_success(f"Interval diatur ke {interval} menit"), parse_mode="HTML")
+
+
+async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    if user_id not in user_settings:
+        user_settings[user_id] = {"alert_enabled": True, "interval": 15}
+
+    settings = user_settings[user_id]
+    text = f"""
+<b>Settings</b>
+
+<b>Auto Alert:</b> {'ON' if settings['alert_enabled'] else 'OFF'}
+<b>Interval:</b> {settings['interval']} menit
+"""
+    keyboard = get_main_menu()
+    if update.callback_query:
+        await update.callback_query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+    else:
+        await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    data = query.data
+
+    if data == "screen":
+        await query.edit_message_text("Ketik kode saham (contoh: BBCA TLKM BBRI):")
+        context.user_data["state"] = "waiting_screen"
+
+    elif data == "watchlist":
+        watchlist = load_watchlist()
+        text = format_watchlist(watchlist)
+        keyboard = get_main_menu()
+        await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+    elif data == "status":
+        status = collector.get_market_status()
+        text = format_market_status(status)
+        keyboard = get_main_menu()
+        await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+    elif data == "analyze":
+        await query.edit_message_text("Ketik kode saham untuk dianalisis:")
+        context.user_data["state"] = "waiting_analyze"
+
+    elif data == "risk":
+        risk = position_sizer.get_risk_summary()
+        text = format_risk_info(risk)
+        keyboard = get_main_menu()
+        await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+    elif data == "alert":
+        user_id = str(update.effective_user.id)
+        if user_id not in user_settings:
+            user_settings[user_id] = {"alert_enabled": True, "interval": 15}
+        is_on = user_settings[user_id]["alert_enabled"]
+        status = "ON" if is_on else "OFF"
+        text = f"<b>Auto Alert:</b> {status}"
+        keyboard = get_alert_menu(is_on)
+        await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+    elif data == "alert_on":
+        await alert_on_command(update, context)
+
+    elif data == "alert_off":
+        await alert_off_command(update, context)
+
+    elif data == "settings":
+        user_id = str(update.effective_user.id)
+        if user_id not in user_settings:
+            user_settings[user_id] = {"alert_enabled": True, "interval": 15}
+        settings = user_settings[user_id]
+        text = f"""
+<b>Settings</b>
+
+<b>Auto Alert:</b> {'ON' if settings['alert_enabled'] else 'OFF'}
+<b>Interval:</b> {settings['interval']} menit
+"""
+        keyboard = get_main_menu()
+        await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+    elif data == "help":
+        text = format_help()
+        keyboard = get_back_menu()
+        await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+    elif data == "main_menu":
+        text = format_welcome()
+        keyboard = get_main_menu()
+        await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+    elif data == "screen_again":
+        await query.edit_message_text("Ketik kode saham (contoh: BBCA TLKM BBRI):")
+        context.user_data["state"] = "waiting_screen"
+
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    state = context.user_data.get("state")
+
+    if state == "waiting_screen":
+        context.user_data["state"] = None
+        symbols = update.message.text.upper().split()
+        await process_screen(update, context, symbols)
+
+    elif state == "waiting_analyze":
+        context.user_data["state"] = None
+        symbol = update.message.text.upper().strip()
+        await process_analyze(update, context, symbol)
+
+    elif state == "waiting_add":
+        context.user_data["state"] = None
+        symbol = update.message.text.upper().strip()
+        watchlist = load_watchlist()
+        if symbol in watchlist:
+            keyboard = get_main_menu()
+            await update.message.reply_text(format_info(f"{symbol} sudah ada di watchlist"), parse_mode="HTML", reply_markup=keyboard)
+        else:
+            watchlist.append(symbol)
+            save_watchlist(watchlist)
+            keyboard = get_main_menu()
+            await update.message.reply_text(format_success(f"{symbol} ditambahkan ke watchlist"), parse_mode="HTML", reply_markup=keyboard)
+
+    elif state == "waiting_remove":
+        context.user_data["state"] = None
+        symbol = update.message.text.upper().strip()
+        watchlist = load_watchlist()
+        if symbol not in watchlist:
+            keyboard = get_main_menu()
+            await update.message.reply_text(format_info(f"{symbol} tidak ada di watchlist"), parse_mode="HTML", reply_markup=keyboard)
+        else:
+            watchlist.remove(symbol)
+            save_watchlist(watchlist)
+            keyboard = get_main_menu()
+            await update.message.reply_text(format_success(f"{symbol} dihapus dari watchlist"), parse_mode="HTML", reply_markup=keyboard)
+
+    else:
+        text = update.message.text.lower()
+
+        if text.startswith("/screen"):
+            await screen_command(update, context)
+        elif text.startswith("/analyze"):
+            await analyze_command(update, context)
+        elif text.startswith("/add"):
+            await add_command(update, context)
+        elif text.startswith("/remove"):
+            await remove_command(update, context)
+        elif text.startswith("/s "):
+            args = text.replace("/s ", "").split()
+            context.args = args
+            await screen_command(update, context)
+        elif text.startswith("/a "):
+            args = text.replace("/a ", "").split()
+            context.args = args
+            await analyze_command(update, context)
+
+
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print(f"Exception: {context.error}")
