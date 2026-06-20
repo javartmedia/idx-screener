@@ -1,0 +1,19 @@
+# IDX Stock Watchlist
+# Tambahkan kode saham yang ingin di-screen
+
+watchlist:
+  - BBCA
+  - BBRI
+  - BMRI
+  - TLKM
+  - ASII
+  - UNVR
+  - BBNI
+  - INDF
+  - KLBF
+  - ICBP
+  - INDY
+  - PGAS
+  - PTBA
+  - ADRO
+  - MDKA

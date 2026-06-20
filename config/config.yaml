@@ -1,0 +1,87 @@
+scheduler:
+  mode: hybrid
+  auto:
+    enabled: true
+    interval_minutes: 15
+  trading_hours:
+    start: "09:00"
+    end: "16:00"
+    timezone: "Asia/Jakarta"
+
+data_source:
+  provider: stockbit
+  cache_ttl: 300
+
+indicators:
+  volume:
+    spike_threshold: 2.0
+    lookback_period: 20
+  trend:
+    ema_fast: 9
+    ema_slow: 21
+    adx_threshold: 25
+  momentum:
+    rsi_period: 14
+    rsi_oversold: 30
+    rsi_overbought: 70
+    macd_fast: 12
+    macd_slow: 26
+    macd_signal: 9
+  volatility:
+    bb_period: 20
+    bb_std: 2
+    atr_period: 14
+
+signal_scoring:
+  min_score: 70
+  weights:
+    volume: 30
+    trend: 25
+    rsi: 20
+    macd: 15
+    bollinger: 10
+
+risk_management:
+  capital: 100000000
+  risk_per_trade: 0.02
+  max_positions: 5
+  max_daily_loss: 0.05
+  stop_loss:
+    method: atr
+    atr_multiplier: 1.5
+  take_profit:
+    method: risk_reward
+    ratio: 2.0
+
+backtesting:
+  initial_capital: 100000000
+  commission: 0.001
+  slippage: 0.001
+
+alerts:
+  telegram:
+    enabled: false
+    bot_token: ""
+    chat_id: ""
+  email:
+    enabled: false
+    smtp_server: smtp.gmail.com
+    smtp_port: 587
+    sender: ""
+    password: ""
+    receiver: ""
+  real_time: true
+  daily_summary: true
+  summary_time: "16:05"
+
+watchlist:
+  - BBCA
+  - BBRI
+  - BMRI
+  - TLKM
+  - ASII
+  - UNVR
+  - BBCA
+  - BBNI
+  - INDF
+  - KLBF
