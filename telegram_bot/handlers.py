@@ -391,6 +391,98 @@ async def predictall_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await update.message.reply_text(format_info("Prediksi selesai!"), parse_mode="HTML", reply_markup=keyboard)
 
 
+async def intraday_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    from src.intraday_scanner import IntradayScanner
+    from formatter import format_intraday_signal, format_intraday_signals, get_intraday_menu, get_intraday_result_menu, format_info, format_error
+
+    session = IntradayScanner(config).get_current_session()
+    if session == "closed":
+        keyboard = get_main_menu()
+        await update.message.reply_text(
+            format_info("Market sedang tutup. Intraday scan hanya tersedia saat market hours (09:00-16:00 WIB)."),
+            parse_mode="HTML",
+            reply_markup=keyboard
+        )
+        return
+
+    if not context.args:
+        keyboard = get_intraday_menu()
+        await update.message.reply_text(
+            format_info("Pilih jenis scan intraday:"),
+            parse_mode="HTML",
+            reply_markup=keyboard
+        )
+        return
+
+    symbol = context.args[0].upper()
+    await process_intraday_single(update, context, symbol)
+
+
+async def process_intraday_single(update: Update, context: ContextTypes.DEFAULT_TYPE, symbol: str):
+    from src.intraday_scanner import IntradayScanner
+    from formatter import format_intraday_signal, get_intraday_result_menu, format_info, format_error
+
+    await update.message.reply_text(format_info(f"Analisis intraday {symbol} dengan GLM AI..."), parse_mode="HTML")
+
+    try:
+        scanner = IntradayScanner(config)
+        result = scanner.scan_stock(symbol)
+
+        if result:
+            text = format_intraday_signal(result)
+            keyboard = get_intraday_result_menu()
+            await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
+        else:
+            keyboard = get_intraday_result_menu()
+            await update.message.reply_text(
+                format_info(f"Tidak ada sinyal intraday untuk {symbol}"),
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+    except Exception as e:
+        await update.message.reply_text(format_error(f"Error: {str(e)}"), parse_mode="HTML")
+
+
+async def intraday_scan_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    from src.intraday_scanner import IntradayScanner
+    from formatter import format_intraday_signals, get_intraday_result_menu, format_info, format_error
+
+    session = IntradayScanner(config).get_current_session()
+    if session == "closed":
+        keyboard = get_main_menu()
+        await update.message.reply_text(
+            format_info("Market sedang tutup."),
+            parse_mode="HTML",
+            reply_markup=keyboard
+        )
+        return
+
+    await update.message.reply_text(format_info("Scan intraday semua watchlist dengan GLM AI..."), parse_mode="HTML")
+
+    try:
+        scanner = IntradayScanner(config)
+        signals = scanner.scan_for_group()
+
+        if signals:
+            text = format_intraday_signals(signals)
+            keyboard = get_intraday_result_menu()
+            await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+            for signal in signals[:5]:
+                from formatter import format_intraday_signal
+                text = format_intraday_signal(signal)
+                await update.message.reply_text(text, parse_mode="HTML")
+        else:
+            keyboard = get_intraday_result_menu()
+            await update.message.reply_text(
+                format_info("Tidak ada sinyal intraday ditemukan"),
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+    except Exception as e:
+        await update.message.reply_text(format_error(f"Error: {str(e)}"), parse_mode="HTML")
+
+
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -493,6 +585,42 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "upload":
         await query.edit_message_text("Uploading to GitHub...")
         await process_upload(update, context)
+
+    elif data == "intraday_scan":
+        from src.intraday_scanner import IntradayScanner
+        from formatter import format_intraday_signal, get_intraday_result_menu
+
+        session = IntradayScanner(config).get_current_session()
+        if session == "closed":
+            keyboard = get_main_menu()
+            await query.edit_message_text("Market sedang tutup.", reply_markup=keyboard)
+            return
+
+        await query.edit_message_text("Scan intraday dengan GLM AI...")
+        try:
+            scanner = IntradayScanner(config)
+            signals = scanner.scan_for_group()
+
+            if signals:
+                for signal in signals[:5]:
+                    from formatter import format_intraday_signal
+                    text = format_intraday_signal(signal)
+                    await query.message.reply_text(text, parse_mode="HTML")
+            else:
+                await query.message.reply_text("Tidak ada sinyal intraday")
+
+            keyboard = get_intraday_result_menu()
+            await query.message.reply_text("Scan selesai!", reply_markup=keyboard)
+        except Exception as e:
+            await query.message.reply_text(f"Error: {str(e)}")
+
+    elif data == "intraday_scan_all":
+        await intraday_scan_command(update, context)
+
+    elif data == "intraday":
+        from formatter import get_intraday_menu
+        keyboard = get_intraday_menu()
+        await query.edit_message_text("Pilih jenis scan intraday:", reply_markup=keyboard)
 
 
 async def process_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):

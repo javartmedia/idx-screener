@@ -86,7 +86,24 @@ watchlist:
   - TLKM
   - ASII
   - UNVR
-  - BBCA
   - BBNI
   - INDF
   - KLBF
+
+glm:
+  api_url: "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+  model: "GLM-5.1"
+  temperature: 0.3
+  max_tokens: 1024
+
+intraday:
+  enabled: true
+  morning_start: "09:00"
+  morning_end: "12:00"
+  afternoon_start: "13:00"
+  afternoon_end: "15:30"
+  interval_minutes: 15
+  min_confidence: 60
+  group_chat_id: ""
+  send_summary: true
+  summary_time: "16:05"

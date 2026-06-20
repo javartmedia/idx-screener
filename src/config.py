@@ -117,12 +117,36 @@ class SchedulerConfig:
 
 
 @dataclass
+class GLMConfig:
+    api_url: str = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+    model: str = "GLM-5.1"
+    temperature: float = 0.3
+    max_tokens: int = 1024
+
+
+@dataclass
+class IntradayConfig:
+    enabled: bool = True
+    morning_start: str = "09:00"
+    morning_end: str = "12:00"
+    afternoon_start: str = "13:00"
+    afternoon_end: str = "15:30"
+    interval_minutes: int = 15
+    min_confidence: int = 60
+    group_chat_id: str = ""
+    send_summary: bool = True
+    summary_time: str = "16:05"
+
+
+@dataclass
 class AppConfig:
     indicators: IndicatorsConfig = field(default_factory=IndicatorsConfig)
     signal_scoring: SignalScoringConfig = field(default_factory=SignalScoringConfig)
     risk_management: RiskManagementConfig = field(default_factory=RiskManagementConfig)
     alerts: AlertsConfig = field(default_factory=AlertsConfig)
     scheduler: SchedulerConfig = field(default_factory=SchedulerConfig)
+    glm: GLMConfig = field(default_factory=GLMConfig)
+    intraday: IntradayConfig = field(default_factory=IntradayConfig)
     watchlist: list = field(default_factory=list)
 
 
@@ -182,6 +206,26 @@ def load_config(config_path: Optional[Path] = None) -> AppConfig:
         hours = sc.get("trading_hours", {})
         config.scheduler.trading_hours_start = hours.get("start", "09:00")
         config.scheduler.trading_hours_end = hours.get("end", "16:00")
+
+    if "glm" in data:
+        gl = data["glm"]
+        config.glm.api_url = gl.get("api_url", config.glm.api_url)
+        config.glm.model = gl.get("model", config.glm.model)
+        config.glm.temperature = gl.get("temperature", config.glm.temperature)
+        config.glm.max_tokens = gl.get("max_tokens", config.glm.max_tokens)
+
+    if "intraday" in data:
+        it = data["intraday"]
+        config.intraday.enabled = it.get("enabled", True)
+        config.intraday.morning_start = it.get("morning_start", "09:00")
+        config.intraday.morning_end = it.get("morning_end", "12:00")
+        config.intraday.afternoon_start = it.get("afternoon_start", "13:00")
+        config.intraday.afternoon_end = it.get("afternoon_end", "15:30")
+        config.intraday.interval_minutes = it.get("interval_minutes", 15)
+        config.intraday.min_confidence = it.get("min_confidence", 60)
+        config.intraday.group_chat_id = it.get("group_chat_id", "")
+        config.intraday.send_summary = it.get("send_summary", True)
+        config.intraday.summary_time = it.get("summary_time", "16:05")
 
     if "watchlist" in data:
         config.watchlist = data["watchlist"]

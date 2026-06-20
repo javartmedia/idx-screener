@@ -61,6 +61,10 @@ class Signal:
     timestamp: datetime
     indicators: dict
     message: str = ""
+    session: str = ""
+    action_time: str = ""
+    confidence: int = 0
+    reason: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -73,6 +77,10 @@ class Signal:
             "timestamp": self.timestamp.isoformat(),
             "indicators": self.indicators,
             "message": self.message,
+            "session": self.session,
+            "action_time": self.action_time,
+            "confidence": self.confidence,
+            "reason": self.reason,
         }
 
 

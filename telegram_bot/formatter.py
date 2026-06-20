@@ -6,6 +6,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 def get_main_menu() -> InlineKeyboardMarkup:
     keyboard = [
         [InlineKeyboardButton("PREDIKSI NEXT DAY", callback_data="predict")],
+        [InlineKeyboardButton("INTRADAY (Beli Pagi Jual Sore)", callback_data="intraday")],
         [InlineKeyboardButton("SCREEN SAHAM", callback_data="screen")],
         [
             InlineKeyboardButton("Watchlist", callback_data="watchlist"),
@@ -235,6 +236,11 @@ def format_help() -> str:
 
 <b>Command List:</b>
 
+<b>Intraday (Beli Pagi Jual Sore):</b>
+/intraday - Menu intraday scanning
+/intraday BBCA - Scan 1 saham
+/intradayscan - Scan semua watchlist
+
 <b>Screening:</b>
 /screen &lt;saham&gt; - Screen 1 saham
 /screen BBCA TLKM - Screen multi saham
@@ -267,7 +273,7 @@ def format_help() -> str:
 /start - Welcome message
 /help - Tampilkan help ini
 
-<i>Contoh: /screen BBCA</i>
+<i>Contoh: /intraday BBCA</i>
 """
     return text.strip()
 
@@ -421,6 +427,104 @@ def format_predict_result_menu() -> InlineKeyboardMarkup:
     keyboard = [
         [
             InlineKeyboardButton("Prediksi Lagi", callback_data="predict"),
+            InlineKeyboardButton("Menu Utama", callback_data="main_menu"),
+        ],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+
+def format_intraday_signal(signal: dict) -> str:
+    action = signal.get("action", "HOLD")
+    symbol = signal.get("symbol", "????")
+    time = signal.get("time", "09:30")
+    entry = signal.get("entry", 0)
+    sl = signal.get("sl", 0)
+    tp = signal.get("tp", 0)
+    confidence = signal.get("confidence", 0)
+    reason = signal.get("reason", "")
+    session = signal.get("session", "morning")
+
+    if action == "BUY":
+        icon = "🟢"
+        action_text = "BELI"
+    elif action == "SELL":
+        icon = "🔴"
+        action_text = "JUAL"
+    else:
+        icon = "🟡"
+        action_text = "HOLD"
+
+    session_text = "Pagi" if session == "morning" else "Sore"
+
+    if confidence >= 80:
+        conf_label = "Tinggi"
+    elif confidence >= 60:
+        conf_label = "Sedang"
+    else:
+        conf_label = "Rendah"
+
+    sl_pct = ((entry - sl) / entry * 100) if entry > 0 else 0
+    tp_pct = ((tp - entry) / entry * 100) if entry > 0 else 0
+
+    text = f"""
+{icon} <b>SINYAL {action_text} - {symbol}</b>
+
+📅 <b>Tanggal:</b> {datetime.now().strftime('%d %B %Y')}
+⏰ <b>Jam {action_text}:</b> {time} WIB
+🌤️ <b>Session:</b> {session_text}
+
+💰 <b>Entry:</b> Rp {entry:,.0f}
+🛑 <b>Stop Loss:</b> Rp {sl:,.0f} (-{sl_pct:.1f}%)
+🎯 <b>Take Profit:</b> Rp {tp:,.0f} (+{tp_pct:.1f}%)
+
+📊 <b>Confidence:</b> {confidence}% ({conf_label})
+📝 <b>Alasan:</b> {reason}
+
+⚠️ <i>Gunakan money management yang baik!</i>
+"""
+    return text.strip()
+
+
+def format_intraday_signals(signals: list) -> str:
+    if not signals:
+        return "<b>Tidak ada sinyal intraday</b>"
+
+    text = f"<b>Sinyal Intraday ({len(signals)} saham)</b>\n\n"
+
+    for i, signal in enumerate(signals[:10], 1):
+        action = signal.get("action", "HOLD")
+        symbol = signal.get("symbol", "????")
+        time = signal.get("time", "09:30")
+        entry = signal.get("entry", 0)
+        confidence = signal.get("confidence", 0)
+
+        if action == "BUY":
+            icon = "🟢"
+        elif action == "SELL":
+            icon = "🔴"
+        else:
+            icon = "🟡"
+
+        text += f"{i}. {icon} <b>{symbol}</b> - {action} @ {time} WIB (Confidence: {confidence}%)\n"
+
+    return text.strip()
+
+
+def get_intraday_menu() -> InlineKeyboardMarkup:
+    keyboard = [
+        [InlineKeyboardButton("Scan Intraday Sekarang", callback_data="intraday_scan")],
+        [
+            InlineKeyboardButton("Scan Semua Watchlist", callback_data="intraday_scan_all"),
+        ],
+        [InlineKeyboardButton("Menu Utama", callback_data="main_menu")],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+
+def get_intraday_result_menu() -> InlineKeyboardMarkup:
+    keyboard = [
+        [
+            InlineKeyboardButton("Scan Lagi", callback_data="intraday_scan"),
             InlineKeyboardButton("Menu Utama", callback_data="main_menu"),
         ],
     ]

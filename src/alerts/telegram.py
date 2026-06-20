@@ -1,5 +1,5 @@
 import requests
-from typing import Optional
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 from ..config import AppConfig
@@ -13,14 +13,14 @@ class TelegramAlert:
         self.chat_id = config.alerts.telegram.chat_id
         self.base_url = f"https://api.telegram.org/bot{self.bot_token}"
 
-    def send_message(self, message: str) -> bool:
+    def send_message(self, message: str, chat_id: str = None) -> bool:
         if not self.enabled:
             return False
 
         try:
             url = f"{self.base_url}/sendMessage"
             payload = {
-                "chat_id": self.chat_id,
+                "chat_id": chat_id or self.chat_id,
                 "text": message,
                 "parse_mode": "HTML",
             }
@@ -49,6 +49,93 @@ class TelegramAlert:
 
         message = self._format_summary(signals, date)
         return self.send_message(message)
+
+    def send_intraday_signal(self, signal_data: Dict[str, Any], chat_id: str = None) -> bool:
+        message = self._format_intraday_signal(signal_data)
+        return self.send_message(message, chat_id)
+
+    def send_intraday_signals(self, signals: List[Dict[str, Any]], chat_id: str = None) -> bool:
+        if not signals:
+            return True
+
+        for signal in signals:
+            message = self._format_intraday_signal(signal)
+            self.send_message(message, chat_id)
+
+        return True
+
+    def send_intraday_summary(self, signals: List[Dict[str, Any]], summary: str, chat_id: str = None) -> bool:
+        message = self._format_intraday_summary(signals, summary)
+        return self.send_message(message, chat_id)
+
+    def _format_intraday_signal(self, signal: Dict[str, Any]) -> str:
+        action = signal.get("action", "HOLD")
+        symbol = signal.get("symbol", "????")
+        time = signal.get("time", "09:30")
+        entry = signal.get("entry", 0)
+        sl = signal.get("sl", 0)
+        tp = signal.get("tp", 0)
+        confidence = signal.get("confidence", 0)
+        reason = signal.get("reason", "")
+        session = signal.get("session", "morning")
+        timestamp = signal.get("timestamp", "")
+
+        if action == "BUY":
+            icon = "🟢"
+            action_text = "BELI"
+        elif action == "SELL":
+            icon = "🔴"
+            action_text = "JUAL"
+        else:
+            icon = "🟡"
+            action_text = "HOLD"
+
+        session_text = "Pagi" if session == "morning" else "Sore"
+
+        if confidence >= 80:
+            conf_label = "Tinggi"
+        elif confidence >= 60:
+            conf_label = "Sedang"
+        else:
+            conf_label = "Rendah"
+
+        sl_pct = ((entry - sl) / entry * 100) if entry > 0 else 0
+        tp_pct = ((tp - entry) / entry * 100) if entry > 0 else 0
+
+        message = f"""
+{icon} <b>SINYAL {action_text} - {symbol}</b>
+
+📅 <b>Tanggal:</b> {datetime.now().strftime('%d %B %Y')}
+⏰ <b>Jam {action_text}:</b> {time} WIB
+🌤️ <b>Session:</b> {session_text}
+
+💰 <b>Entry:</b> Rp {entry:,.0f}
+🛑 <b>Stop Loss:</b> Rp {sl:,.0f} (-{sl_pct:.1f}%)
+🎯 <b>Take Profit:</b> Rp {tp:,.0f} (+{tp_pct:.1f}%)
+
+📊 <b>Confidence:</b> {confidence}% ({conf_label})
+📝 <b>Alasan:</b> {reason}
+
+⚠️ <i>Gunakan money management yang baik!</i>
+"""
+        return message.strip()
+
+    def _format_intraday_summary(self, signals: List[Dict[str, Any]], summary: str) -> str:
+        buy_count = len([s for s in signals if s.get("action") == "BUY"])
+        sell_count = len([s for s in signals if s.get("action") == "SELL"])
+
+        message = f"""
+📊 <b>RINGKASAN INTRADAY - {datetime.now().strftime('%d %B %Y')}</b>
+
+📈 <b>Total Sinyal:</b> {len(signals)}
+🟢 <b>BUY:</b> {buy_count}
+🔴 <b>SELL:</b> {sell_count}
+
+{summary}
+
+<i>Ringkasan dari AI GLM-5.1</i>
+"""
+        return message.strip()
 
     def _format_signal(self, signal: Signal) -> str:
         indicators = signal.indicators

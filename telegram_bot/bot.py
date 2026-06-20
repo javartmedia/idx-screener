@@ -32,6 +32,8 @@ from handlers import (
     predict_command,
     predictall_command,
     upload_command,
+    intraday_command,
+    intraday_scan_command,
     button_callback,
     handle_message,
     error_handler,
@@ -72,6 +74,8 @@ def main():
     application.add_handler(CommandHandler("predictall", predictall_command))
     application.add_handler(CommandHandler("upload", upload_command))
     application.add_handler(CommandHandler("deploy", upload_command))
+    application.add_handler(CommandHandler("intraday", intraday_command))
+    application.add_handler(CommandHandler("intradayscan", intraday_scan_command))
 
     application.add_handler(CallbackQueryHandler(button_callback))
 
