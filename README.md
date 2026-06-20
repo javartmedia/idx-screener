@@ -10,6 +10,7 @@ Sistem screening saham Indonesia (IDX) untuk strategi **Beli Pagi, Jual Sore** d
 - **Auto Scheduler**: Monitoring otomatis setiap 15 menit
 - **Alerts**: CLI, Telegram, Email notifications
 - **CLI Interface**: Command line untuk manual screening
+- **Telegram Bot**: Screening langsung di Telegram group
 
 ## Installation
 
@@ -108,6 +109,57 @@ Edit `config/config.yaml` to customize:
 - Rich (Terminal Output)
 - requests & BeautifulSoup (Web Scraping)
 - python-telegram-bot (Telegram Alerts)
+
+## Telegram Bot
+
+### Setup
+
+1. Buka Telegram, cari **@BotFather**
+2. Ketik `/newbot`
+3. Isi nama bot: `IDX Screener Bot`
+4. Isi username: `idx_screener_bot` (harus unik)
+5. Copy token yang diberikan
+
+### Konfigurasi
+
+```bash
+cd telegram_bot
+pip install -r requirements.txt
+
+# Edit .env file
+# BOT_TOKEN=your_token_here
+```
+
+### Jalankan Bot
+
+```bash
+cd telegram_bot
+python bot.py
+```
+
+### Command Bot
+
+| Command | Deskripsi |
+|---------|-----------|
+| `/start` | Welcome message |
+| `/help` | List semua command |
+| `/screen BBCA` | Screen saham |
+| `/screenall` | Screen semua watchlist |
+| `/analyze BBCA` | Analisis detail |
+| `/watchlist` | Lihat daftar saham |
+| `/add BBNI` | Tambah ke watchlist |
+| `/remove BBNI` | Hapus dari watchlist |
+| `/status` | Market status |
+| `/risk` | Info risk management |
+| `/alert on/off` | Toggle auto alert |
+| `/interval 15` | Set interval alert |
+
+### Auto Alert
+
+Bot akan mengirim alert otomatis ke group saat ada sinyal:
+- Hanya aktif saat jam trading (09:00-16:00 WIB)
+- Interval: setiap 15 menit (bisa diatur)
+- Toggle: `/alert on` atau `/alert off`
 
 ## Disclaimer
 
