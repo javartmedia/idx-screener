@@ -65,9 +65,9 @@ backtesting:
 
 alerts:
   telegram:
-    enabled: false
-    bot_token: ""
-    chat_id: ""
+    enabled: true
+    bot_token: "8675890941:AAGgnxXpyhdk-m8cV1LY8DoaoKkIwGSTHgg"
+    chat_id: "-1003851972650"
   email:
     enabled: false
     smtp_server: smtp.gmail.com
@@ -104,6 +104,6 @@ intraday:
   afternoon_end: "15:30"
   interval_minutes: 15
   min_confidence: 60
-  group_chat_id: ""
+  group_chat_id: "-1003851972650"
   send_summary: true
   summary_time: "16:05"
