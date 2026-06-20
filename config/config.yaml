@@ -33,7 +33,7 @@ indicators:
     atr_period: 14
 
 signal_scoring:
-  min_score: 50
+  min_score: 0
   weights:
     volume: 30
     trend: 25
