@@ -31,6 +31,7 @@ from handlers import (
     interval_command,
     predict_command,
     predictall_command,
+    upload_command,
     button_callback,
     handle_message,
     error_handler,
@@ -69,6 +70,8 @@ def main():
     application.add_handler(CommandHandler("interval", interval_command))
     application.add_handler(CommandHandler("predict", predict_command))
     application.add_handler(CommandHandler("predictall", predictall_command))
+    application.add_handler(CommandHandler("upload", upload_command))
+    application.add_handler(CommandHandler("deploy", upload_command))
 
     application.add_handler(CallbackQueryHandler(button_callback))
 

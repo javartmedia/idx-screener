@@ -37,7 +37,9 @@ class StockBitCollector:
             df = self._fetch_from_stockbit(symbol, days, timeframe)
             if not df.empty:
                 df.to_parquet(cache_file)
-            return df
+                return df
+            else:
+                return self._generate_mock_data(symbol, days, timeframe)
         except Exception as e:
             print(f"Error fetching {symbol} from StockBit: {e}")
             return self._generate_mock_data(symbol, days, timeframe)

@@ -19,7 +19,10 @@ def get_main_menu() -> InlineKeyboardMarkup:
             InlineKeyboardButton("Alert ON/OFF", callback_data="alert"),
             InlineKeyboardButton("Settings", callback_data="settings"),
         ],
-        [InlineKeyboardButton("HELP", callback_data="help")],
+        [
+            InlineKeyboardButton("UPLOAD GITHUB", callback_data="upload"),
+            InlineKeyboardButton("HELP", callback_data="help"),
+        ],
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -238,6 +241,10 @@ def format_help() -> str:
 /screenall - Screen semua watchlist
 /analyze &lt;saham&gt; - Analisis detail
 
+<b>Prediksi:</b>
+/predict &lt;saham&gt; - Prediksi next day
+/predictall - Prediksi semua watchlist
+
 <b>Watchlist:</b>
 /watchlist - Lihat daftar saham
 /add &lt;saham&gt; - Tambah ke watchlist
@@ -251,6 +258,10 @@ def format_help() -> str:
 /alert on - Aktifkan auto alert
 /alert off - Matikan auto alert
 /interval &lt;menit&gt; - Set interval (1-60)
+
+<b>GitHub Upload:</b>
+/upload - Upload perubahan ke GitHub
+/deploy - Upload perubahan ke GitHub
 
 <b>Lainnya:</b>
 /start - Welcome message

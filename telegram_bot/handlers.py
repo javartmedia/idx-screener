@@ -1,4 +1,5 @@
 import sys
+import subprocess
 from pathlib import Path
 from datetime import datetime
 from typing import List
@@ -489,6 +490,105 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = get_main_menu()
         await query.message.reply_text("Prediksi selesai!", reply_markup=keyboard)
 
+    elif data == "upload":
+        await query.edit_message_text("Uploading to GitHub...")
+        await process_upload(update, context)
+
+
+async def process_upload(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        project_dir = Path(__file__).parent.parent
+
+        git_paths = [
+            r"C:\Users\sony.helmi\AppData\Local\Programs\Git\cmd\git.exe",
+            r"C:\Program Files\Git\cmd\git.exe",
+            r"C:\Program Files (x86)\Git\cmd\git.exe",
+            r"C:\Program Files\GitHub\bin\git.exe",
+        ]
+        git_cmd = "git"
+        for path in git_paths:
+            if Path(path).exists():
+                git_cmd = path
+                break
+
+        result = subprocess.run(
+            [git_cmd, "add", "."],
+            cwd=str(project_dir),
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        if result.returncode != 0:
+            if update.callback_query:
+                await update.callback_query.message.reply_text(format_error(f"Git add failed: {result.stderr}"), parse_mode="HTML")
+            return
+
+        result = subprocess.run(
+            [git_cmd, "status", "--porcelain"],
+            cwd=str(project_dir),
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        if not result.stdout.strip():
+            keyboard = get_main_menu()
+            if update.callback_query:
+                await update.callback_query.message.reply_text(format_info("Tidak ada perubahan untuk di-upload"), parse_mode="HTML", reply_markup=keyboard)
+            return
+
+        commit_msg = f"Auto update from Telegram Bot - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+
+        result = subprocess.run(
+            [git_cmd, "commit", "-m", commit_msg],
+            cwd=str(project_dir),
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        if result.returncode != 0:
+            if update.callback_query:
+                await update.callback_query.message.reply_text(format_error(f"Git commit failed: {result.stderr}"), parse_mode="HTML")
+            return
+
+        result = subprocess.run(
+            [git_cmd, "push", "origin", "main"],
+            cwd=str(project_dir),
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        if result.returncode != 0:
+            if update.callback_query:
+                await update.callback_query.message.reply_text(format_error(f"Git push failed: {result.stderr}"), parse_mode="HTML")
+            return
+
+        text = f"""
+<b>Upload Berhasil!</b>
+
+<b>Commit:</b> {commit_msg}
+<b>Branch:</b> main
+<b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+<b>Repository:</b>
+https://github.com/javartmedia/idx-screener
+"""
+        keyboard = get_main_menu()
+        if update.callback_query:
+            await update.callback_query.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+    except subprocess.TimeoutExpired:
+        if update.callback_query:
+            await update.callback_query.message.reply_text(format_error("Git command timeout"), parse_mode="HTML")
+    except FileNotFoundError:
+        if update.callback_query:
+            await update.callback_query.message.reply_text(
+                format_error("Git tidak terinstall. Install dari: https://git-scm.com/download/win"),
+                parse_mode="HTML"
+            )
+    except Exception as e:
+        if update.callback_query:
+            await update.callback_query.message.reply_text(format_error(f"Error: {str(e)}"), parse_mode="HTML")
+
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     state = context.user_data.get("state")
@@ -561,6 +661,86 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             args = text.replace("/p ", "").split()
             context.args = args
             await predict_command(update, context)
+        elif text.startswith("/upload"):
+            await upload_command(update, context)
+        elif text.startswith("/deploy"):
+            await upload_command(update, context)
+
+
+async def upload_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(format_info("Uploading to GitHub..."), parse_mode="HTML")
+
+    try:
+        project_dir = Path(__file__).parent.parent
+
+        result = subprocess.run(
+            ["git", "add", "."],
+            cwd=str(project_dir),
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        if result.returncode != 0:
+            await update.message.reply_text(format_error(f"Git add failed: {result.stderr}"), parse_mode="HTML")
+            return
+
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=str(project_dir),
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        if not result.stdout.strip():
+            keyboard = get_main_menu()
+            await update.message.reply_text(format_info("Tidak ada perubahan untuk di-upload"), parse_mode="HTML", reply_markup=keyboard)
+            return
+
+        commit_msg = f"Auto update from Telegram Bot - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        if context.args:
+            commit_msg = " ".join(context.args)
+
+        result = subprocess.run(
+            ["git", "commit", "-m", commit_msg],
+            cwd=str(project_dir),
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        if result.returncode != 0:
+            await update.message.reply_text(format_error(f"Git commit failed: {result.stderr}"), parse_mode="HTML")
+            return
+
+        result = subprocess.run(
+            ["git", "push", "origin", "main"],
+            cwd=str(project_dir),
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        if result.returncode != 0:
+            await update.message.reply_text(format_error(f"Git push failed: {result.stderr}"), parse_mode="HTML")
+            return
+
+        text = f"""
+<b>Upload Berhasil!</b>
+
+<b>Commit:</b> {commit_msg}
+<b>Branch:</b> main
+<b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+<b>Repository:</b>
+https://github.com/javartmedia/idx-screener
+"""
+        keyboard = get_main_menu()
+        await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+    except subprocess.TimeoutExpired:
+        await update.message.reply_text(format_error("Git command timeout"), parse_mode="HTML")
+    except FileNotFoundError:
+        await update.message.reply_text(format_error("Git tidak terinstall"), parse_mode="HTML")
+    except Exception as e:
+        await update.message.reply_text(format_error(f"Error: {str(e)}"), parse_mode="HTML")
 
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
