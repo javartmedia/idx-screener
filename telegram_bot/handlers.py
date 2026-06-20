@@ -63,6 +63,23 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
 
 
+async def getchatid_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    chat_type = update.effective_chat.type
+    chat_title = update.effective_chat.title or "Private Chat"
+
+    text = f"""
+<b>Chat Info:</b>
+
+<b>Chat ID:</b> <code>{chat_id}</code>
+<b>Type:</b> {chat_type}
+<b>Name:</b> {chat_title}
+
+<i>Copy Chat ID di atas dan paste ke config.yaml</i>
+"""
+    await update.message.reply_text(text, parse_mode="HTML")
+
+
 async def screen_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         text = "Ketik kode saham (contoh: BBCA TLKM BBRI):"

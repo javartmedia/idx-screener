@@ -19,6 +19,7 @@ from telegram_bot_config import BOT_TOKEN, TRADING_HOURS_START, TRADING_HOURS_EN
 from handlers import (
     start_command,
     help_command,
+    getchatid_command,
     screen_command,
     screenall_command,
     analyze_command,
@@ -60,6 +61,7 @@ def main():
 
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("getchatid", getchatid_command))
     application.add_handler(CommandHandler("screen", screen_command))
     application.add_handler(CommandHandler("screenall", screenall_command))
     application.add_handler(CommandHandler("analyze", analyze_command))
