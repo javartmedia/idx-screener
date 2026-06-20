@@ -75,6 +75,7 @@ class MomentumIndicator:
 
         prev_macd = macd_df["macd"].iloc[-2] if len(macd_df) > 1 else current_macd
         prev_signal = macd_df["macd_signal"].iloc[-2] if len(macd_df) > 1 else current_signal
+        prev_histogram = macd_df["macd_histogram"].iloc[-2] if len(macd_df) > 1 else current_histogram
 
         bullish_cross = prev_macd <= prev_signal and current_macd > current_signal
         bearish_cross = prev_macd >= prev_signal and current_macd < current_signal
