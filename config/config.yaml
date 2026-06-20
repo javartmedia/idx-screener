@@ -33,13 +33,18 @@ indicators:
     atr_period: 14
 
 signal_scoring:
-  min_score: 70
+  min_score: 50
   weights:
     volume: 30
     trend: 25
     rsi: 20
     macd: 15
     bollinger: 10
+
+prediction:
+  enabled: true
+  lookback_days: 30
+  confidence_threshold: 60
 
 risk_management:
   capital: 100000000

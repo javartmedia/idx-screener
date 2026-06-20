@@ -26,6 +26,10 @@ from formatter import (
     format_success,
     format_info,
     format_daily_summary,
+    format_price_prediction,
+    format_volume_analysis,
+    format_prediction_menu,
+    format_predict_result_menu,
     get_main_menu,
     get_screen_result_menu,
     get_back_menu,
@@ -36,6 +40,12 @@ config = load_config()
 collector = StockBitCollector()
 screener = MultiIndicatorScreener(config)
 position_sizer = PositionSizer(config)
+
+from src.indicators.prediction import PredictionIndicator
+from src.indicators.volume_analysis import VolumeAnalysis
+
+prediction_indicator = PredictionIndicator()
+volume_analyzer = VolumeAnalysis()
 
 user_settings = {}
 
@@ -320,6 +330,66 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
 
 
+async def predict_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        text = "Ketik kode saham untuk prediksi (contoh: BBCA):"
+        await update.message.reply_text(text)
+        context.user_data["state"] = "waiting_predict"
+        return
+
+    symbol = context.args[0].upper()
+    await process_predict(update, context, symbol)
+
+
+async def process_predict(update: Update, context: ContextTypes.DEFAULT_TYPE, symbol: str):
+    await update.message.reply_text(format_info(f"Menganalisis {symbol} untuk prediksi..."), parse_mode="HTML")
+
+    try:
+        df = collector.get_stock_data(symbol, days=60, timeframe="15m")
+
+        if df.empty:
+            keyboard = get_main_menu()
+            await update.message.reply_text(format_error(f"Tidak data ditemukan untuk {symbol}"), parse_mode="HTML", reply_markup=keyboard)
+            return
+
+        price_prediction = prediction_indicator.predict_price(df)
+        volume_analysis = volume_analyzer.analyze(df)
+
+        price_text = format_price_prediction(symbol, price_prediction)
+        keyboard = format_predict_result_menu()
+        await update.message.reply_text(price_text, parse_mode="HTML", reply_markup=keyboard)
+
+        vol_text = format_volume_analysis(symbol, volume_analysis)
+        await update.message.reply_text(vol_text, parse_mode="HTML", reply_markup=keyboard)
+
+    except Exception as e:
+        await update.message.reply_text(format_error(f"Error: {str(e)}"), parse_mode="HTML")
+
+
+async def predictall_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    watchlist = load_watchlist()
+
+    if not watchlist:
+        keyboard = get_main_menu()
+        await update.message.reply_text(format_error("Watchlist kosong."), parse_mode="HTML", reply_markup=keyboard)
+        return
+
+    await update.message.reply_text(format_info(f"Memprediksi {len(watchlist)} saham..."), parse_mode="HTML")
+
+    for symbol in watchlist:
+        try:
+            df = collector.get_stock_data(symbol, days=60, timeframe="15m")
+            if not df.empty:
+                price_prediction = prediction_indicator.predict_price(df)
+                price_text = format_price_prediction(symbol, price_prediction)
+                await update.message.reply_text(price_text, parse_mode="HTML")
+        except Exception:
+            pass
+
+    keyboard = get_main_menu()
+    await update.message.reply_text(format_info("Prediksi selesai!"), parse_mode="HTML", reply_markup=keyboard)
+
+
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -396,6 +466,29 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("Ketik kode saham (contoh: BBCA TLKM BBRI):")
         context.user_data["state"] = "waiting_screen"
 
+    elif data == "predict":
+        keyboard = format_prediction_menu()
+        await query.edit_message_text("Pilih jenis prediksi:", reply_markup=keyboard)
+
+    elif data == "predict_single":
+        await query.edit_message_text("Ketik kode saham untuk prediksi:")
+        context.user_data["state"] = "waiting_predict"
+
+    elif data == "predict_all":
+        await query.edit_message_text("Memprediksi semua watchlist...")
+        watchlist = load_watchlist()
+        for symbol in watchlist:
+            try:
+                df = collector.get_stock_data(symbol, days=60, timeframe="15m")
+                if not df.empty:
+                    price_prediction = prediction_indicator.predict_price(df)
+                    price_text = format_price_prediction(symbol, price_prediction)
+                    await query.message.reply_text(price_text, parse_mode="HTML")
+            except Exception:
+                pass
+        keyboard = get_main_menu()
+        await query.message.reply_text("Prediksi selesai!", reply_markup=keyboard)
+
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     state = context.user_data.get("state")
@@ -423,6 +516,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = get_main_menu()
             await update.message.reply_text(format_success(f"{symbol} ditambahkan ke watchlist"), parse_mode="HTML", reply_markup=keyboard)
 
+    elif state == "waiting_predict":
+        context.user_data["state"] = None
+        symbol = update.message.text.upper().strip()
+        await process_predict(update, context, symbol)
+
     elif state == "waiting_remove":
         context.user_data["state"] = None
         symbol = update.message.text.upper().strip()
@@ -436,13 +534,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = get_main_menu()
             await update.message.reply_text(format_success(f"{symbol} dihapus dari watchlist"), parse_mode="HTML", reply_markup=keyboard)
 
-    else:
+    elif state is None:
         text = update.message.text.lower()
 
         if text.startswith("/screen"):
             await screen_command(update, context)
         elif text.startswith("/analyze"):
             await analyze_command(update, context)
+        elif text.startswith("/predict"):
+            await predict_command(update, context)
+        elif text.startswith("/predictall"):
+            await predictall_command(update, context)
         elif text.startswith("/add"):
             await add_command(update, context)
         elif text.startswith("/remove"):
@@ -455,6 +557,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             args = text.replace("/a ", "").split()
             context.args = args
             await analyze_command(update, context)
+        elif text.startswith("/p "):
+            args = text.replace("/p ", "").split()
+            context.args = args
+            await predict_command(update, context)
 
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):

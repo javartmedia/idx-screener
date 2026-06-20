@@ -29,6 +29,8 @@ from handlers import (
     risk_command,
     alert_command,
     interval_command,
+    predict_command,
+    predictall_command,
     button_callback,
     handle_message,
     error_handler,
@@ -65,6 +67,8 @@ def main():
     application.add_handler(CommandHandler("risk", risk_command))
     application.add_handler(CommandHandler("alert", alert_command))
     application.add_handler(CommandHandler("interval", interval_command))
+    application.add_handler(CommandHandler("predict", predict_command))
+    application.add_handler(CommandHandler("predictall", predictall_command))
 
     application.add_handler(CallbackQueryHandler(button_callback))
 

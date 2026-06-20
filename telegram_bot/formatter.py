@@ -5,20 +5,21 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 def get_main_menu() -> InlineKeyboardMarkup:
     keyboard = [
-        [InlineKeyboardButton("📊 SCREEN SAHAM", callback_data="screen")],
+        [InlineKeyboardButton("PREDIKSI NEXT DAY", callback_data="predict")],
+        [InlineKeyboardButton("SCREEN SAHAM", callback_data="screen")],
         [
-            InlineKeyboardButton("📋 Watchlist", callback_data="watchlist"),
-            InlineKeyboardButton("📈 Status", callback_data="status"),
+            InlineKeyboardButton("Watchlist", callback_data="watchlist"),
+            InlineKeyboardButton("Status", callback_data="status"),
         ],
         [
-            InlineKeyboardButton("🔍 Analisis", callback_data="analyze"),
-            InlineKeyboardButton("🛡️ Risk Info", callback_data="risk"),
+            InlineKeyboardButton("Analisis", callback_data="analyze"),
+            InlineKeyboardButton("Risk Info", callback_data="risk"),
         ],
         [
-            InlineKeyboardButton("🔔 Alert ON/OFF", callback_data="alert"),
-            InlineKeyboardButton("⚙️ Settings", callback_data="settings"),
+            InlineKeyboardButton("Alert ON/OFF", callback_data="alert"),
+            InlineKeyboardButton("Settings", callback_data="settings"),
         ],
-        [InlineKeyboardButton("❓ HELP", callback_data="help")],
+        [InlineKeyboardButton("HELP", callback_data="help")],
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -296,3 +297,120 @@ def format_daily_summary(signals: List[dict], date: datetime = None) -> str:
             text += f"- <b>{symbol}</b> - Score: {score}\n"
 
     return text.strip()
+
+
+def format_price_prediction(symbol: str, prediction: dict) -> str:
+    current = prediction.get("current_price", 0)
+    low = prediction.get("predicted_low", 0)
+    mid = prediction.get("predicted_mid", 0)
+    high = prediction.get("predicted_high", 0)
+    confidence = prediction.get("confidence", 0)
+    support_1 = prediction.get("support_1", 0)
+    support_2 = prediction.get("support_2", 0)
+    resistance_1 = prediction.get("resistance_1", 0)
+    resistance_2 = prediction.get("resistance_2", 0)
+    trend = prediction.get("trend", "Unknown")
+    momentum = prediction.get("momentum", "Unknown")
+    change_pct = prediction.get("expected_change_pct", 0)
+
+    if confidence >= 70:
+        conf_level = "HIGH"
+    elif confidence >= 50:
+        conf_level = "MEDIUM"
+    else:
+        conf_level = "LOW"
+
+    text = f"""
+<b>NEXT DAY PREDICTION - {symbol}</b>
+
+<b>Current Price:</b> Rp {current:,.0f}
+
+<b>Prediksi Harga:</b>
+- Low: Rp {low:,.0f}
+- Mid: Rp {mid:,.0f}
+- High: Rp {high:,.0f}
+
+<b>Expected Change:</b> {change_pct:+.2f}%
+<b>Confidence:</b> {confidence:.0f}% ({conf_level})
+
+<b>Key Levels:</b>
+- Resistance 2: Rp {resistance_2:,.0f}
+- Resistance 1: Rp {resistance_1:,.0f}
+- Support 1: Rp {support_1:,.0f}
+- Support 2: Rp {support_2:,.0f}
+
+<b>Trend:</b> {trend}
+<b>Momentum:</b> {momentum}
+
+<i>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}</i>
+"""
+    return text.strip()
+
+
+def format_volume_analysis(symbol: str, analysis: dict) -> str:
+    avg_vol = analysis.get("avg_volume", 0)
+    max_vol = analysis.get("max_volume", 0)
+    min_vol = analysis.get("min_volume", 0)
+    max_day = analysis.get("max_volume_day", "N/A")
+    min_day = analysis.get("min_volume_day", "N/A")
+    trend = analysis.get("volume_trend", "Unknown")
+    trend_strength = analysis.get("trend_strength", "Unknown")
+    obv_trend = analysis.get("obv_trend", "Unknown")
+    accumulation = analysis.get("accumulation_phase", "Unknown")
+    acc_signal = analysis.get("accumulation_signal", "Unknown")
+    predicted = analysis.get("predicted_volume", 0)
+    condition = analysis.get("volume_condition", "Unknown")
+    has_spike = analysis.get("has_spike", False)
+    spike_ratio = analysis.get("spike_ratio", 1.0)
+
+    spike_text = "YES" if has_spike else "No"
+
+    text = f"""
+<b>VOLUME ANALYSIS - {symbol}</b>
+
+<b>Volume Stats (7 Hari):</b>
+- Average: {avg_vol:,.0f}
+- Highest: {max_vol:,.0f} ({max_day})
+- Lowest: {min_vol:,.0f} ({min_day})
+
+<b>Volume Trend:</b>
+- Direction: {trend}
+- Strength: {trend_strength}
+
+<b>OBV Analysis:</b>
+- OBV Trend: {obv_trend}
+
+<b>Accumulation/Distribution:</b>
+- Phase: {accumulation}
+- Signal: {acc_signal}
+
+<b>Volume Spike:</b>
+- Detected: {spike_text}
+- Ratio: {spike_ratio:.1f}x average
+
+<b>Prediction:</b>
+- Expected Volume: {predicted:,.0f}
+- Condition: {condition}
+
+<i>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}</i>
+"""
+    return text.strip()
+
+
+def format_prediction_menu() -> InlineKeyboardMarkup:
+    keyboard = [
+        [InlineKeyboardButton("Prediksi 1 Saham", callback_data="predict_single")],
+        [InlineKeyboardButton("Prediksi Semua Watchlist", callback_data="predict_all")],
+        [InlineKeyboardButton("Menu Utama", callback_data="main_menu")],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+
+def format_predict_result_menu() -> InlineKeyboardMarkup:
+    keyboard = [
+        [
+            InlineKeyboardButton("Prediksi Lagi", callback_data="predict"),
+            InlineKeyboardButton("Menu Utama", callback_data="main_menu"),
+        ],
+    ]
+    return InlineKeyboardMarkup(keyboard)
